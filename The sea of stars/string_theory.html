@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弦理论：额外维度紧致化演示</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* 隐藏浏览器滚动条 */
+            background-color: #050505;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #ui-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            background: rgba(20, 20, 25, 0.85);
+            padding: 20px 30px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+        #scale-value {
+            font-weight: bold;
+            color: #00ffff;
+            margin-left: 10px;
+        }
+        input[type=range] {
+            width: 100%;
+            margin: 20px 0;
+            cursor: pointer;
+        }
+        .labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <!-- 交互 UI 悬浮窗 -->
+    <div id="ui-container">
+        <div style="font-size: 16px;">当前观察尺度：<span id="scale-value">宏观世界 (感知3维空间)</span></div>
+        <input type="range" id="scale-slider" min="0" max="100" value="0">
+        <div class="labels">
+            <span>宏观空间 (Macro)</span>
+            <span>微观普朗克尺度 (Micro)</span>
+        </div>
+    </div>
+
+    <!-- 通过 CDN 引入 Three.js 核心库与视角控制器 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // === 1. 场景与雾化效果初始化 ===
+        const scene = new THREE.Scene();
+        // 添加暗色雾效，让远处的网格渐渐隐入黑暗
+        scene.fog = new THREE.FogExp2(0x050505, 0.015); 
+
+        // === 2. 相机设置 ===
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const macroZ = 35;  // 宏观相机 Z 轴距离
+        const microZ = 6;   // 微观相机 Z 轴距离
+        camera.position.set(0, 15, macroZ); // 初始俯视视角
+
+        // === 3. 渲染器设置 ===
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); // 适配高分屏
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // === 4. 轨道控制器 (支持鼠标拖拽旋转) ===
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; 
+        controls.dampingFactor = 0.05; // 增加拖拽时的阻尼顺滑感
+        controls.enablePan = false;    // 禁用平移，聚焦中心
+
+        // === 5. 光影布置 ===
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // 基础环境光
+        scene.add(ambientLight);
+        
+        // 主光源：青蓝色，照亮多维几何体的一侧
+        const cyanLight = new THREE.PointLight(0x00ffff, 1.5, 100);
+        cyanLight.position.set(10, 15, 10);
+        scene.add(cyanLight);
+
+        // 辅光源：紫红色，形成科幻感的双色打光
+        const purpleLight = new THREE.PointLight(0xff00ff, 1.5, 100);
+        purpleLight.position.set(-10, -10, -10);
+        scene.add(purpleLight);
+
+        // === 6. 构建宏观世界：空间网格 ===
+        const gridHelper = new THREE.GridHelper(100, 40, 0x555555, 0x222222);
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        // === 7. 构建微观世界：高维卷曲结构 (卡拉比-丘流形模拟) ===
+        // 这里使用 TorusKnot (环面扭结) 来表现微观下缠绕、折叠的复杂维度特性
+        const knotGeometry = new THREE.TorusKnotGeometry(1.5, 0.45, 256, 64, 3, 7);
+        const knotMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0xffffff, 
+            metalness: 0.8,     // 金属质感反射环境光
+            roughness: 0.1,     // 表面光滑度
+            clearcoat: 1.0,     // 镀膜效果
+            transparent: true,
+            opacity: 0.0,       // 初始不可见，深入微观后显现
+            wireframe: false
+        });
+        const extraDimensionKnot = new THREE.Mesh(knotGeometry, knotMaterial);
+        scene.add(extraDimensionKnot);
+
+        // 微观量子涨落粒子效果
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 800;
+        const posArray = new Float32Array(particlesCount * 3);
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 8; // 分布在中心 8x8x8 的空间内
+        }
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.03,
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending // 叠加发光效果
+        });
+        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particleSystem);
+
+        // === 8. 交互逻辑：滑动条监听 ===
+        const slider = document.getElementById('scale-slider');
+        const scaleText = document.getElementById('scale-value');
+
+        slider.addEventListener('input', (e) => {
+            const val = e.target.value / 100; // 将 0-100 转化为 0 到 1 的插值系数
+            
+            // 1. 相机空间缩放 (从俯视平滑推进到微观平视)
+            const currentZ = macroZ - val * (macroZ - microZ);
+            const currentY = 15 - val * 15; 
+            camera.position.set(camera.position.x, currentY, currentZ);
+            
+            // 2. 材质透明度过渡控制
+            // 微观高维扭结渐显 (使用立方曲线，让其在最后阶段快速显现)
+            knotMaterial.opacity = Math.pow(val, 3); 
+            particleSystem.material.opacity = Math.pow(val, 2);
+
+            // 宏观网格渐隐
+            gridHelper.material.opacity = 1 - val * 1.2; 
+
+            // 3. UI 文本状态更新
+            if (val < 0.3) {
+                scaleText.innerText = "宏观世界 (感知3维空间)";
+                scaleText.style.color = "#aaaaaa";
+            } else if (val < 0.7) {
+                scaleText.innerText = "深入亚原子尺度...";
+                scaleText.style.color = "#00ccff";
+            } else {
+                scaleText.innerText = "普朗克尺度 (可见卷曲的额外维度)";
+                scaleText.style.color = "#ff00ff";
+            }
+        });
+
+        // === 9. 动画渲染主循环 ===
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 让微观扭结缓慢自转，展示复杂的拓扑面
+            extraDimensionKnot.rotation.x += 0.003;
+            extraDimensionKnot.rotation.y += 0.005;
+
+            // 让粒子系统缓慢旋转模拟量子扰动
+            particleSystem.rotation.y -= 0.001;
+            particleSystem.rotation.z += 0.001;
+
+            controls.update(); // 必须在循环中调用以支持阻尼交互
+            renderer.render(scene, camera);
+        }
+
+        // === 10. 屏幕尺寸自适应 ===
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 启动动画
+        animate();
+    </script>
+</body>
+</html>
